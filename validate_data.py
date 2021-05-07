@@ -11,10 +11,10 @@ zips = np.array(df['zip'])
 phones = np.array(df['phone1'])
 emails = np.array(df['email'])
 
-num_empty_soc_secs = len([a for a in list(df['social_security'].isnull()) if a])
-num_empty_states = len([a for a in list(df['state'].isnull()) if a])
-num_empty_zips = len([a for a in list(df['zip'].isnull()) if a])
-num_empty_phones = len([a for a in list(df['phone1'].isnull()) if a])
-num_empty_emails = len([a for a in list(df['email'].isnull()) if a])
+num_empty_soc_secs = df.isnull().sum()[0]
+num_empty_states = df.isnull().sum()[1]
+num_empty_zips = df.isnull().sum()[2]
+num_empty_phones = df.isnull().sum()[3]
+num_empty_emails = df.isnull().sum()[4]
 
 shell()
