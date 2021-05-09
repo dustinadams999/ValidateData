@@ -4,9 +4,10 @@
 
 # Questions: Can we safely assume this is all USA data? Seems to be the case.
 
-import sys
+import json
 import numpy as np
 import pandas as pd
+import sys
 from IPython import embed as shell
 
 def main():
@@ -16,11 +17,13 @@ def main():
   # data provided by https://simplemaps.com/data/us-zips
   zip_data = pd.read_csv('/Users/dustinadams/quicken_code_test/simplemaps_uszips_basicv1.77/uszips.csv')
 
-  soc_secs = np.array(user_data['social_security'])
-  states = np.array(user_data['state'])
-  zips = np.array(user_data['zip'])
-  phones = np.array(user_data['phone1'])
-  emails = np.array(user_data['email'])
+  # the above data set is not complete - also need to grab from this site https://www.zipcodestogo.com
+  with open('additional_state_data.json', 'r') as zip_file:
+    adtl_zip_data = json.load(zip_file) 
+
+  # load dictionary of all valid state names and their two letter code
+  with open('states.json', 'r') as state_file:
+    state_codes = json.load(state_file)
 
   # identify and count missing values
   # TODO: currently we're only counting, we also need to identify (by index)
@@ -34,17 +37,38 @@ def main():
 
   # TODO: identify bad values that truly require manual inspection
   # social security: if the value is not XXX-XX-XXXX, and the value is not 9 ints, it's a bad value
+  a = 0
+  for i in user_data['social_security']:
+    try:
+      if not ((i.replace('-','')).isnumeric() and len(i.replace('-','')) == 9):
+        raise Error()
+    except:
+        print('SOCIAL SECURITY ERROR. value: {} on index: {}'.format(i, a))
+    a += 1
 
   # state: If neither the state nor the 2 letter state code exists, then it's a bad value
+  a = 0
+  for i in user_data['state']:
+    if (not i in state_codes.keys()) and (not i in state_codes.values()):
+      print('STATE ERROR. value: {} on index: {}'.format(i, a))
+    a += 1
 
   # phone: If the formatting is not (XXX) XXX-XXXX (or XXX-XXX-XXXX or XXXXXXXXXX) then it's bad 
 
   # find invalid zip codes - if the zip code converted to an int does not exist, then it's a bad value
   a = 0
   for i in user_data['zip']:
-    if (len(np.where(true_zips==i)[0]) == 0):
-      print(user_data[a:a+1])
+    try:
+      if not int(i) in zip_data['zip'].values:
+        raise Error()
+    except:
+      print('ZIP ERROR. value: {} on index: {}'.format(i,a))
     a += 1
+
+  shell()
+
+  # another layer of validation for zip codes will be to match it up with the state.
+  # if the validation data does not match for the zip and state, then it's going to require manual inspection.
 
   # TODO: identify values with incorrect formatting (and ideally correct them)
   # social security: if the value is not XXX-XX-XXXX (with dashes), add the dashes to the 9 ints

@@ -1,6 +1,12 @@
 # ignore csv files
 *.csv
 
+# ignore json files
+*.json
+
+# ignore txt files
+*.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
