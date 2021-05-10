@@ -1,16 +1,20 @@
 # TODO: setup commandline arguments
 # TODO: setup main and other functions
-# TODO: try to decide what to do about dependency requirements
 
-# Questions: Can we safely assume this is all USA data? Seems to be the case.
+# Questions:
+# Can we safely assume this is all USA data? Seems to be the case.
+# Should we write the data that needs to be manually checked back to the csv file?
+# Or should we prompt the user?
 
 import json
 import numpy as np
+import os
 import pandas as pd
+import re
 import sys
 from IPython import embed as shell
 
-def main():
+def main(options):
   # data provided by Data Governance
   user_data = pd.read_csv('data_quality_case_study.csv')
 
@@ -30,14 +34,22 @@ def main():
     state_codes = json.load(state_file)
 
   # identify and count missing values
-  # TODO: currently we're only counting, we also need to identify (by index)
   num_empty_soc_secs = user_data.isnull().sum()[0]
   num_empty_states = user_data.isnull().sum()[1]
   num_empty_zips = user_data.isnull().sum()[2]
   num_empty_phones = user_data.isnull().sum()[3]
   num_empty_emails = user_data.isnull().sum()[4]
+  print('Number of missing social security numbers: {}'.format(num_empty_soc_secs))
+  print('Number of missing states: {}'.format(num_empty_soc_secs))
+  print('Number of missing zip codes: {}'.format(num_empty_soc_secs))
+  print('Number of missing phone numbers: {}'.format(num_empty_soc_secs))
+  print('Number of missing email addresses: {}'.format(num_empty_soc_secs))
 
   # TODO: identify and count correct values (of all columns)
+
+  # *************************
+  # CHECKING FOR BAD VALUES *
+  # *************************
 
   # TODO: identify bad values that truly require manual inspection
   # social security: if the value is not XXX-XX-XXXX, and the value is not 9 ints, it's a bad value
@@ -96,24 +108,93 @@ def main():
         print('ZIP CODE AND STATE DO NOT MATCH ERROR. state: {}, zip: {}, index: {}'.format(user_data['state'][a], user_data['zip'][a], a))
     a += 1
 
+  # email: if the value is not $string@$string.$domain then it's a bad value
+  regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
+  a = 0
+  for i in user_data['email']:
+    if pd.isnull(i):
+      print('INVALID EMAIL ERROR. email: {}, index: {}'.format(i, a))
+      a += 1
+      continue
+    try:
+      if(not re.search(regex, i)):
+        print('INVALID EMAIL ERROR. email: {}, index: {}'.format(i, a))
+    except:
+      shell()
+    a += 1
+
+
+  # ***********************************
+  # CHECKING FOR INCORRECT FORMATTING *
+  # ***********************************
+
+  print('FIXING FORMATTING')
+
   # TODO: identify values with incorrect formatting (and ideally correct them)
-  # social security: if the value is not XXX-XX-XXXX (with dashes), add the dashes to the 9 ints
+  # social security: if the value is not XXX-XX-XXXX (with dashes) and is 9 ints, add the dashes to the 9 ints
+  a = 0
+  for i in user_data['social_security']:
+    if pd.isnull(i):
+      a += 1
+      continue
+    if ((i.isnumeric() and len(i) == 9)):
+      user_data.at[a, 'social_security'] = i[0:3] + '-' + i[3:5] + '-' + i[5:]
+    a += 1  
+
 
   # state: if it's not the two letter state code, assume it's the full state name and rename it to the 2 letter code
+  a = 0
+  for i in user_data['state']:
+    if pd.isnull(i):
+      a += 1
+      continue
+    if (i not in state_codes.values()):
+      # check if i is a valid state
+      if i.lower().capitalize() in state_codes.keys(): # make sure to format the state correctly when searching
+        user_data.at[a, 'state'] = state_codes[i.lower().capitalize()]
+      #user_data.at[a, 'social_security'] = i[0:3] + '-' + i[3:5] + '-' + i[5:]
+    a += 1 
+
 
   # zip: if it's any other data type not an int, change it to an int
 
   # phone: should be (XXX) XXX-XXXX, so if it's not then convert the 10 numbers to that.
   # if there's a +1 at the beginning, get rid of it.
+  a = 0
+  for i in user_data['phone1']:
+    if pd.isnull(i):
+      a +=1
+      continue
+    if i[:2] == '+1': # it's assumed we're in USA
+      i = i[2:].strip()
+    if len(i.replace('(', '').replace(')', '').replace('-', '').replace(' ', '')) == 10:
+      i = i.replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
+      i = '({}) {}-{}'.format(i[0:3], i[3:6], i[6:])
+      user_data.at[a, 'phone1'] = i
+    a += 1
 
-  # email: if the value is not $string@$string.$domain then it's a bad value
 
   # TODO: Finally, produce the 'cleaned' dataset back
+  user_data.to_csv('new_data_quality_case_study.csv', index=False)
 
-
-
-  # TODO: Make a list of all the assumptions that we're making here
+  # TODO: Make a list of all the assumptions that we're making here:
+  # ASSUMPTION: we're only working with USA data (this has implications for state, phone number, and zip)
 
 
 if __name__ == '__main__':
-  main()
+  from optparse import OptionParser
+
+  usage = 'usage: %prog -i csv-input-file -o output-directory'
+  parser = OptionParser(usage)
+
+  parser.add_option('-i', '--input-file', dest='input_file', action='store', default='data_quality_case_study.csv', help='Input path')
+  parser.add_option('-o', '--output-path', dest='output_path', action='store', default=os.getcwd(), help='Output path for cleaned csv file')
+
+  (options, args) = parser.parse_args()
+
+  if not os.path.isfile(options.input_file):
+    parser.error('input file given by -i option does not exist.')
+  if not os.path.isdir(options.output_path):
+    parser.error('output path given by -o option does not exist.')
+
+  main(options)
