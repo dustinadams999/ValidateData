@@ -18,8 +18,12 @@ def main():
   zip_data = pd.read_csv('/Users/dustinadams/quicken_code_test/simplemaps_uszips_basicv1.77/uszips.csv')
 
   # the above data set is not complete - also need to grab from this site https://www.zipcodestogo.com
-  with open('additional_state_data.json', 'r') as zip_file:
-    adtl_zip_data = json.load(zip_file) 
+  with open('additional_state_code_data.json', 'r') as zip_file:
+    adtl_zip_data = json.load(zip_file)
+
+  all_adtl_zips = []
+  for key in adtl_zip_data:
+    all_adtl_zips += adtl_zip_data[key]
 
   # load dictionary of all valid state names and their two letter code
   with open('states.json', 'r') as state_file:
@@ -59,16 +63,38 @@ def main():
   a = 0
   for i in user_data['zip']:
     try:
-      if not int(i) in zip_data['zip'].values:
+      #if not int(i) in zip_data['zip'].values:
+      #shell()
+      if not str(int(i)) in all_adtl_zips:
         raise Error()
     except:
       print('ZIP ERROR. value: {} on index: {}'.format(i,a))
     a += 1
 
-  shell()
-
   # another layer of validation for zip codes will be to match it up with the state.
   # if the validation data does not match for the zip and state, then it's going to require manual inspection.
+  a = 0
+  for i in user_data['state']:
+    if pd.isnull(user_data['state'][a]) or pd.isnull(user_data['zip'][a]):
+      continue
+    # for each record's state, make sure its zip code belongs to that state
+    state_code = ''
+    if i in state_codes.values():
+      state_code = i
+    elif i in state_codes.keys():
+      state_code = state_codes[i]
+    else:
+      a += 1
+      continue # it's already determined which records don't have valid states
+
+    # check that the value isn't in the adtl_zip_data 
+    if not (str(int(user_data['zip'][a])) in adtl_zip_data[state_code]):
+      # get index of the zip code from the zip_data dataframe
+      zip_index = (zip_data['zip'][zip_data['zip'] == int(user_data['zip'][a])]).index[0]
+      if zip_data['state_id'][zip_index] != state_code:
+        shell()
+        print('ZIP CODE AND STATE DO NOT MATCH ERROR. state: {}, zip: {}, index: {}'.format(user_data['state'][a], user_data['zip'][a], a))
+    a += 1
 
   # TODO: identify values with incorrect formatting (and ideally correct them)
   # social security: if the value is not XXX-XX-XXXX (with dashes), add the dashes to the 9 ints
