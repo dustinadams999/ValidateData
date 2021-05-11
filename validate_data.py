@@ -36,7 +36,6 @@ def main(options):
 
     # data provided by https://simplemaps.com/data/us-zips
     zip_data = pd.read_csv('/Users/dustinadams/quicken_code_test/simplemaps_uszips_basicv1.77/uszips.csv')
-                
 
     # the above data set is not complete (has some missing zip codes) - also need to grab from this site https://www.zipcodestogo.com
     with open('additional_state_code_data.json', 'r') as zip_file:
@@ -55,6 +54,7 @@ def main(options):
     zips_missing_indexes = []
     phones_missing_indexes = []
     emails_missing_indexes = []
+
     for a in range(user_data.shape[0]):
         if pd.isnull(user_data['social_security'][a]): soc_secs_missing_indexes.append(a)
         if pd.isnull(user_data['state'][a]): states_missing_indexes.append(a)
@@ -85,12 +85,14 @@ def main(options):
     num_correct_zips = 0
     num_correct_phones = 0
     num_correct_emails = 0
+
     for a in range(user_data.shape[0]):
         correct_soc_sec = True
         correct_state = True
         correct_zip = True
         correct_phone = True
         correct_email = True
+
         # social security: if the value is not XXX-XX-XXXX, and the value is not 9 ints, it's a bad value
         if not pd.isnull(user_data['social_security'][a]):
             # bad value
@@ -129,6 +131,8 @@ def main(options):
 
             # incorrect formatting
             # phone (123) 456-7890
+            # TODO: comment out a few different formatting possibilities so we can switch between,
+            # such as (123)456-7890 and 123-456-7890
             i = user_data['phone1'][a]
             if i[:2] == '+1': # it's already assumed we're in USA
                 correct_phone = False
@@ -139,7 +143,6 @@ def main(options):
                 i = i.replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
                 i = '({}) {}-{}'.format(i[0:3], i[3:6], i[6:])
                 user_data.at[a, 'phone1'] = i
-
 
         if not pd.isnull(user_data['email'][a]):
             # bad value
