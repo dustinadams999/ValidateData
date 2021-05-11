@@ -15,9 +15,10 @@ import sys
 from IPython import embed as shell
 
 def main(options):
+    regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
+
     # data provided by Data Governance
     try:
-        #user_data = pd.read_csv('data_quality_case_study.csv')
         csv_dtype = {
             'social_security':  str,
             'state':            str,
@@ -45,16 +46,27 @@ def main(options):
         state_codes = json.load(state_file)
 
     # identify and count missing values
-    num_empty_soc_secs = user_data.isnull().sum()[0]
-    num_empty_states = user_data.isnull().sum()[1]
-    num_empty_zips = user_data.isnull().sum()[2]
-    num_empty_phones = user_data.isnull().sum()[3]
-    num_empty_emails = user_data.isnull().sum()[4]
-    print('Number of missing social security numbers: {}'.format(num_empty_soc_secs))
-    print('Number of missing states: {}'.format(num_empty_soc_secs))
-    print('Number of missing zip codes: {}'.format(num_empty_soc_secs))
-    print('Number of missing phone numbers: {}'.format(num_empty_soc_secs))
-    print('Number of missing email addresses: {}'.format(num_empty_soc_secs))
+    soc_secs_missing_indexes = []
+    states_missing_indexes = []
+    zips_missing_indexes = []
+    phones_missing_indexes = []
+    emails_missing_indexes = []
+    for a in range(user_data.shape[0]):
+        if pd.isnull(user_data['social_security'][a]): soc_secs_missing_indexes.append(a)
+        if pd.isnull(user_data['state'][a]): states_missing_indexes.append(a)
+        if pd.isnull(user_data['zip'][a]): zips_missing_indexes.append(a)
+        if pd.isnull(user_data['phone1'][a]): phones_missing_indexes.append(a)
+        if pd.isnull(user_data['email'][a]): emails_missing_indexes.append(a)
+    print('Number of missing social security numbers: {}'.format(user_data.isnull().sum()[0]))
+    print('Indexes of missing social security numbers: {}\n'.format(soc_secs_missing_indexes))
+    print('Number of missing states: {}'.format(user_data.isnull().sum()[1]))
+    print('Indexes of missing states: {}\n'.format(states_missing_indexes))
+    print('Number of missing zip codes: {}'.format(user_data.isnull().sum()[2]))
+    print('Indexes of missing zip codes: {}\n'.format(zips_missing_indexes))
+    print('Number of missing phones: {}'.format(user_data.isnull().sum()[3]))
+    print('Indexes of missing phones: {}\n'.format(phones_missing_indexes))
+    print('Number of missing email addresses: {}'.format(user_data.isnull().sum()[4]))
+    print('Indexes of missing email addresses: {}\n'.format(emails_missing_indexes))
 
     # TODO: identify and count correct values (of all columns)
 
@@ -62,79 +74,54 @@ def main(options):
     # CHECKING FOR BAD VALUES *
     # *************************
 
-    # TODO: combine all the for loops into one
+    # cycle through all records to find bad values and fix 
+    num_correct_soc_secs = 0
+    num_correct_states = 0
+    num_correct_zips = 0
+    num_correct_phones = 0
+    num_correct_emails = 0
+    for a in range(user_data.shape[0]):
+        # social security: if the value is not XXX-XX-XXXX, and the value is not 9 ints, it's a bad value
+        if not pd.isnull(user_data['social_security'][a]):
+            if not ((user_data['social_security'][a].replace('-','')).isnumeric() and len(user_data['social_security'][a].replace('-','')) == 9):
+                print('INVALID SOCIAL SECURITY NUMBER. value: {} on index: {}'.format(user_data['social_security'][a], a))
 
-    # social security: if the value is not XXX-XX-XXXX, and the value is not 9 ints, it's a bad value
-    a = 0
-    for i in user_data['social_security']:
-        try:
-            if not ((i.replace('-','')).isnumeric() and len(i.replace('-','')) == 9):
-                raise Error()
-        except:
-                print('SOCIAL SECURITY ERROR. value: {} on index: {}'.format(i, a))
-        a += 1
+        # state: If neither the state nor the 2 letter state code exists, then it's a bad value
+        if not pd.isnull(user_data['state'][a]):
+            if (not user_data['state'][a] in state_codes.keys()) and (not user_data['state'][a] in state_codes.values()):
+                print('INVALID STATE. value: {} on index: {}'.format(user_data['state'][a], a))
 
-    # state: If neither the state nor the 2 letter state code exists, then it's a bad value
-    a = 0
-    for i in user_data['state']:
-        if (not i in state_codes.keys()) and (not i in state_codes.values()):
-            print('STATE ERROR. value: {} on index: {}'.format(i, a))
-        a += 1
+        # find invalid zip codes - if the zip code converted to an int does not exist, then it's a bad value
+        if not pd.isnull(user_data['zip'][a]):
+            if not (user_data['zip'][a] in all_adtl_zips):
+                print('INVALID ZIP CODE. value: {} on index: {}'.format(user_data['zip'][a],a))
 
-    # phone: If the formatting is not (XXX) XXX-XXXX (or XXX-XXX-XXXX or XXXXXXXXXX) then it's bad 
+        # another layer of validation for zip codes will be to match it up with the state.
+        # if the validation data does not match for the zip and state, then it's going to require manual inspection.
+        if not (pd.isnull(user_data['state'][a]) or pd.isnull(user_data['zip'][a])):
+            #continue
+            # for each record's state, make sure its zip code belongs to that state
+            state_code = ''
+            if user_data['state'][a] in state_codes.values():
+                state_code = user_data['state'][a]
+            elif user_data['state'][a] in state_codes.keys():
+                state_code = state_codes[user_data['state'][a]]
 
-    # find invalid zip codes - if the zip code converted to an int does not exist, then it's a bad value
-    a = 0
-    for i in user_data['zip']:
-        try:
-            #if not int(i) in zip_data['zip'].values:
-            #shell()
-            if not str(int(i)) in all_adtl_zips:
-                raise Error()
-        except:
-            print('ZIP ERROR. value: {} on index: {}'.format(i,a))
-        a += 1
+            if state_code != '':
+            # check that the value isn't in the adtl_zip_data 
+                if not (str(int(user_data['zip'][a])) in adtl_zip_data[state_code]):
+                    # get index of the zip code from the zip_data dataframe
+                    zip_index = (zip_data['zip'][zip_data['zip'] == int(user_data['zip'][a])]).index[0]
+                    if zip_data['state_id'][zip_index] != state_code:
+                        print('ZIP CODE AND STATE DO NOT MATCH ERROR. state: {}, zip: {}, index: {}'.format(user_data['state'][a], user_data['zip'][a], a))
 
-    # another layer of validation for zip codes will be to match it up with the state.
-    # if the validation data does not match for the zip and state, then it's going to require manual inspection.
-    a = 0
-    for i in user_data['state']:
-        if pd.isnull(user_data['state'][a]) or pd.isnull(user_data['zip'][a]):
-            continue
-        # for each record's state, make sure its zip code belongs to that state
-        state_code = ''
-        if i in state_codes.values():
-            state_code = i
-        elif i in state_codes.keys():
-            state_code = state_codes[i]
-        else:
-            a += 1
-            continue # it's already determined which records don't have valid states
 
-        # check that the value isn't in the adtl_zip_data 
-        if not (str(int(user_data['zip'][a])) in adtl_zip_data[state_code]):
-            # get index of the zip code from the zip_data dataframe
-            zip_index = (zip_data['zip'][zip_data['zip'] == int(user_data['zip'][a])]).index[0]
-            if zip_data['state_id'][zip_index] != state_code:
-                shell()
-                print('ZIP CODE AND STATE DO NOT MATCH ERROR. state: {}, zip: {}, index: {}'.format(user_data['state'][a], user_data['zip'][a], a))
-        a += 1
+        if not pd.isnull(user_data['email'][a]):
+            if(not re.search(regex, user_data['email'][a])):
+                print('INVALID EMAIL ADDRESS. email: {}, index: {}'.format(user_data['email'][a], a))
 
-    # email: if the value is not $string@$string.$domain then it's a bad value
-    regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
-    a = 0
-    for i in user_data['email']:
-        if pd.isnull(i):
-            print('INVALID EMAIL ERROR. email: {}, index: {}'.format(i, a))
-            a += 1
-            continue
-        try:
-            if(not re.search(regex, i)):
-                print('INVALID EMAIL ERROR. email: {}, index: {}'.format(i, a))
-        except:
-            shell()
-        a += 1
-
+    # TODO: Combine formatting into the above for loop
+    # TODO: Create functions for each check
 
     # ***********************************
     # CHECKING FOR INCORRECT FORMATTING *
