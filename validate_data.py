@@ -51,7 +51,7 @@ def main(options):
             'email':            str
         }
         user_data = pd.read_csv(options.input_file, dtype=csv_dtype)
-        print('Reading file: {}'.format(os.path.abspath(options.input_file)))
+        print('Reading file: {}\n'.format(os.path.abspath(options.input_file)))
     except:
         print('Error reading csv file. Check path to make sure it is a valid csv file')
         exit(1)
@@ -65,6 +65,11 @@ def main(options):
     num_correct_phones = 0
     num_correct_emails = 0
     
+    print( \
+        'Determining bad values and incorrect formatting. Bad values will be alerted, while '
+        'incorrect formatting will not. Incorrect formatting will be automatically fixed.\n' \
+        )
+
     # cycle through all records to find bad, incorrect formatted (and fix), and correct values
     for a in range(user_data.shape[0]):
 
@@ -82,11 +87,11 @@ def main(options):
         if correct_phone: num_correct_phones += 1
         if correct_email: num_correct_emails += 1
 
-    print('Correct social security numbers: {}'.format(num_correct_soc_secs - num_missing_soc_secs))
+    print('\nCorrect social security numbers: {}'.format(num_correct_soc_secs - num_missing_soc_secs))
     print('Correct states: {}'.format(num_correct_states - num_missing_states))
     print('Correct zip codes: {}'.format(num_correct_zips - num_missing_zips))
     print('Correct phone numbers: {}'.format(num_correct_phones - num_missing_phones))
-    print('Correct email addresses: {}'.format(num_correct_emails - num_missing_emails))
+    print('Correct email addresses: {}\n'.format(num_correct_emails - num_missing_emails))
 
     print('Writing to file: {}'.format(os.path.abspath(os.path.join(options.output_path, 'new_data_quality_case_study.csv'))))
     user_data.to_csv(os.path.join(options.output_path, 'new_data_quality_case_study.csv'), index=False)
