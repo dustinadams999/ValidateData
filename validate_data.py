@@ -1,9 +1,9 @@
 # Assumptions:
 # All USA data
 # No need to prompt the user to fix "bad" values
-# What constitutes a "correct value"? Right now we're assuming a correct value is a value that is not bad and not incorrect formatting.
-# We're assuming a phone number is formatted as (123) 456-7890
-# not sure what would constitute an incorrectly formatted email...
+# A correct value is a value that is not bad and not incorrect formatting.
+# A phone number is formatted as 123-456-7890 (also capability for (123) 456-7890)
+# Currently not sure what would constitute an incorrectly formatted email...
 
 import itertools
 import json
@@ -27,7 +27,7 @@ all_adtl_zips = list(itertools.chain.from_iterable(adtl_zip_data.values()))
 email_regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
 
 def main(options):
-    # data provided by Data Governance
+    # initialize pandas dataframe from csv file
     try:
         csv_dtype = {
             'social_security':  str,
@@ -44,13 +44,13 @@ def main(options):
     num_missing_soc_secs, num_missing_states, num_missing_zips, num_missing_phones, num_missing_emails = \
         find_missing_values(user_data)
 
-    # cycle through all records to find bad, incorrect formatted (and fix), and correct values
     num_correct_soc_secs = 0
     num_correct_states = 0
     num_correct_zips = 0
     num_correct_phones = 0
     num_correct_emails = 0
-
+    
+    # cycle through all records to find bad, incorrect formatted (and fix), and correct values
     for a in range(user_data.shape[0]):
 
         correct_soc_sec = validate_social_security(user_data, a)      
@@ -119,7 +119,7 @@ def validate_zip(user_data, a):
 
 def validate_phone(user_data, a):
     # bad values are complicated. If the phone number has 11 digits, and the first is 1,
-    # is that a valid phone number with a USA prefix or an invalid number?
+    # is that a valid phone number with a USA prefix or an invalid phone number?
 
     # incorrect formatting
     correct_phone = True
