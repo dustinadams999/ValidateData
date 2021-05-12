@@ -129,38 +129,38 @@ def validate_phone(user_data, a):
             correct_phone = False
             i = i[2:].strip()
         # phone format (123) 456-7890
-        #if not ( \
-        #    (len(i) == 14) and \
-        #    i[0] == '(' and \
-        #    i[1:4].isnumeric() and \
-        #    i[4] == ')' and \
-        #    i[5] == ' ' and \
-        #    i[6:9].isnumeric() and \
-        #    i[9] == '-' and \
-        #    i[10:].isnumeric() \
-        #    ):
-        #    correct_phone = False
-        #temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
-        #temp_phone = ''.join(temp_phone)
-        #if len(temp_phone) == 10:
-        #    i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
-        #    user_data.at[a, 'phone1'] = i
-
-        # phone format 123-456-7890
         if not ( \
-            (len(i) == 12) and \
-            i[0:3].isnumeric() and \
-            i[3] == '-' and \
-            i[4:7].isnumeric() and \
-            i[7] == '-' and \
-            i[8:].isnumeric()
+            (len(i) == 14) and \
+            i[0] == '(' and \
+            i[1:4].isnumeric() and \
+            i[4] == ')' and \
+            i[5] == ' ' and \
+            i[6:9].isnumeric() and \
+            i[9] == '-' and \
+            i[10:].isnumeric() \
             ):
             correct_phone = False
         temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
         temp_phone = ''.join(temp_phone)
         if len(temp_phone) == 10:
-            i = '{}-{}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
+            i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
             user_data.at[a, 'phone1'] = i
+
+        # phone format 123-456-7890
+        #if not ( \
+        #    (len(i) == 12) and \
+        #    i[0:3].isnumeric() and \
+        #    i[3] == '-' and \
+        #    i[4:7].isnumeric() and \
+        #    i[7] == '-' and \
+        #    i[8:].isnumeric()
+        #    ):
+        #    correct_phone = False
+        #temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
+        #temp_phone = ''.join(temp_phone)
+        #if len(temp_phone) == 10:
+        #    i = '{}-{}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
+        #    user_data.at[a, 'phone1'] = i
 
     return correct_phone
 
