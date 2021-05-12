@@ -12,7 +12,6 @@ import os
 import pandas as pd
 import re
 import sys
-from IPython import embed as shell
 
 # load dictionary of all valid state names and their two letter code
 with open('states.json', 'r') as state_file:
@@ -25,7 +24,7 @@ with open('additional_state_code_data.json', 'r') as zip_file:
 # this list is used to assist with quickly finding out if a zip code is valid from the adtl_zip_data dict
 all_adtl_zips = list(itertools.chain.from_iterable(adtl_zip_data.values()))
 
-regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
+email_regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
 
 def main(options):
     # data provided by Data Governance
@@ -74,10 +73,7 @@ def main(options):
     print('Correct phone numbers: {}'.format(num_correct_phones - num_missing_phones))
     print('Correct email addresses: {}'.format(num_correct_emails - num_missing_emails))
 
-    # TODO: Create functions for each check
-    # TODO: add the path that was entered by the user for the below file
-
-    user_data.to_csv('new_data_quality_case_study.csv', index=False)
+    user_data.to_csv(os.path.join(options.output_path, 'new_data_quality_case_study.csv'), index=False)
 
 def validate_social_security(user_data, a):
     if not pd.isnull(user_data['social_security'][a]):
@@ -122,22 +118,48 @@ def validate_zip(user_data, a):
     return True
 
 def validate_phone(user_data, a):
+    # bad values are complicated. If the phone number has 11 digits, and the first is 1,
+    # is that a valid phone number with a USA prefix or an invalid number?
+
     # incorrect formatting
-    # phone (123) 456-7890
-    # TODO: comment out a few different formatting possibilities so we can switch between,
-    # such as (123)456-7890 and 123-456-7890
-    # TODO: this is still a little buggy...(202)-646-7516 is being counted as valid which is not right
     correct_phone = True
     if not pd.isnull(user_data['phone1'][a]):
         i = user_data['phone1'][a]
         if i[:2] == '+1': # it's already assumed we're in USA
             correct_phone = False
             i = i[2:].strip()
-        if (len(i) != 14) or (not (i[1:4]+i[6:9]+i[10:]).isnumeric()):
+        # phone format (123) 456-7890
+        #if not ( \
+        #    (len(i) == 14) and \
+        #    i[0] == '(' and \
+        #    i[1:4].isnumeric() and \
+        #    i[4] == ')' and \
+        #    i[5] == ' ' and \
+        #    i[6:9].isnumeric() and \
+        #    i[9] == '-' and \
+        #    i[10:].isnumeric() \
+        #    ):
+        #    correct_phone = False
+        #temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
+        #temp_phone = ''.join(temp_phone)
+        #if len(temp_phone) == 10:
+        #    i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
+        #    user_data.at[a, 'phone1'] = i
+
+        # phone format 123-456-7890
+        if not ( \
+            (len(i) == 12) and \
+            i[0:3].isnumeric() and \
+            i[3] == '-' and \
+            i[4:7].isnumeric() and \
+            i[7] == '-' and \
+            i[8:].isnumeric()
+            ):
             correct_phone = False
-        if len(i.replace('(', '').replace(')', '').replace('-', '').replace(' ', '')) == 10:
-            i = i.replace('(', '').replace(')', '').replace('-', '').replace(' ', '')
-            i = '({}) {}-{}'.format(i[0:3], i[3:6], i[6:])
+        temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
+        temp_phone = ''.join(temp_phone)
+        if len(temp_phone) == 10:
+            i = '{}-{}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
             user_data.at[a, 'phone1'] = i
 
     return correct_phone
@@ -145,7 +167,7 @@ def validate_phone(user_data, a):
 def validate_email(user_data, a):
     if not pd.isnull(user_data['email'][a]):
         # bad value
-        if(not re.search(regex, user_data['email'][a])):
+        if(not re.search(email_regex, user_data['email'][a])):
             print('INVALID EMAIL ADDRESS. email: {}, index: {}'.format(user_data['email'][a], a))
             return False
 
