@@ -1,9 +1,19 @@
-# Assumptions:
-# All USA data
-# No need to prompt the user to fix "bad" values
-# A correct value is a value that is not bad and not incorrect formatting.
-# A phone number is formatted as 123-456-7890 (also capability for (123) 456-7890)
-# Currently not sure what would constitute an incorrectly formatted email...
+"""
+This program reads a set of csv data (encoded with columns social_security, state, zip, phone1, email),
+determines and counts which values are correct, which require manual inspection, which have incorrect
+formatting (and fixes the formatting), and writes to a new csv file.
+
+Author: Dustin Adams
+Date: May 8, 2021
+
+Assumptions being made about the data:
+All USA data
+No need to prompt the user to fix "bad" values
+A correct value is a value that is not bad and not incorrect formatting.
+A phone number is formatted as (123) 456-7890 (also capability for 123-456-7890)
+Currently not sure what would constitute an incorrectly formatted email...
+"""
+
 
 import itertools
 import json
@@ -27,6 +37,10 @@ all_adtl_zips = list(itertools.chain.from_iterable(adtl_zip_data.values()))
 email_regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
 
 def main(options):
+    """
+    Initialize dataframe, count missing values, determine correct values, bad values, and incorrect
+    formatting (and fix). Display results to user.
+    """
     # initialize pandas dataframe from csv file
     try:
         csv_dtype = {
@@ -78,6 +92,11 @@ def main(options):
     user_data.to_csv(os.path.join(options.output_path, 'new_data_quality_case_study.csv'), index=False)
 
 def validate_social_security(user_data, a):
+    """
+    This function checks an individual social security number, determines if it's a bad value,
+    and if so alerts the user, as well as determines if the formatting is wrong. If the formatting
+    is wrong, the user is not alerted, it is just fixed in the dataframe.
+    """
     if not pd.isnull(user_data['social_security'][a]):
         # bad value
         if not ((user_data['social_security'][a].replace('-','')).isnumeric() and len(user_data['social_security'][a].replace('-','')) == 9):
@@ -93,6 +112,11 @@ def validate_social_security(user_data, a):
     return True 
 
 def validate_state(user_data, a):
+    """
+    This function checks an individual state, determines if it's a bad value,
+    and if so alerts the user, as well as determines if the formatting is wrong. If the formatting
+    is wrong, the user is not alerted, it is just fixed in the dataframe.
+    """
     correct_state = True
     if not pd.isnull(user_data['state'][a]):
         # bad value
@@ -103,14 +127,21 @@ def validate_state(user_data, a):
         # incorrect formatting
         i = user_data['state'][a]
         if (i not in state_codes.values()):
+            # Check if both letters of the state code are not upper case
+            if i.upper() in state_codes.values():
+                user_data.at[a, 'state'] = state_codes[i.upper()]
             # check if i is a valid state
-            if i.lower().capitalize() in state_codes.keys(): # make sure to format the state correctly when searching
+            elif i.lower().capitalize() in state_codes.keys(): # make sure to format the state correctly when searching
                 user_data.at[a, 'state'] = state_codes[i.lower().capitalize()]
             correct_state = False
 
     return correct_state
 
 def validate_zip(user_data, a):
+    """
+    This function checks an individual zip code, determines if it's a bad value,
+    and if so alerts the user. No formatting is currently being checked on the zip code.
+    """
     if not pd.isnull(user_data['zip'][a]):
         # bad value
         if not (user_data['zip'][a] in all_adtl_zips):
@@ -120,7 +151,11 @@ def validate_zip(user_data, a):
     return True
 
 def validate_phone(user_data, a):
-    # bad values are complicated. If the phone number has 11 digits, and the first is 1,
+    """
+    This function checks an individual phone number, determines if the formatting is wrong. If the formatting
+    is wrong, the user is not alerted, it is just fixed in the dataframe.
+    """
+    # Bad values here are complicated. If the phone number has 11 digits, and the first is 1,
     # is that a valid phone number with a USA prefix or an invalid phone number?
 
     # incorrect formatting
@@ -167,6 +202,10 @@ def validate_phone(user_data, a):
     return correct_phone
 
 def validate_email(user_data, a):
+    """
+    This function checks an individual email address, determines if it's a bad value,
+    and if so alerts the user. No formatting is currently being checked on the email address.
+    """
     if not pd.isnull(user_data['email'][a]):
         # bad value
         if(not re.search(email_regex, user_data['email'][a])):
@@ -176,8 +215,11 @@ def validate_email(user_data, a):
     return True
 
 def state_and_zip_validation(user_data, a):
-    # another layer of validation for zip codes will be to match it up with the state.
-    # if the validation data does not match for the zip and state, then it's going to require manual inspection.
+    """
+    This function checks another layer of validation: whether zip codes match up with the state.
+    If the validation data does not match for the zip and state, then it's a bad value for
+    the state and zip.
+    """
     if not (pd.isnull(user_data['state'][a]) or pd.isnull(user_data['zip'][a])):
         # for each record's state, make sure its zip code belongs to that state
         if user_data['zip'][a] in all_adtl_zips:
@@ -193,7 +235,9 @@ def state_and_zip_validation(user_data, a):
                     print('ZIP CODE AND STATE DO NOT MATCH ERROR. state: {}, zip: {}, index: {}'.format(user_data['state'][a], user_data['zip'][a], a))
 
 def find_missing_values(user_data):
-    # identify and count missing values
+    """
+    This function identifies and counts missing values in the dataframe.
+    """
     soc_secs_missing_indexes = []
     states_missing_indexes = []
     zips_missing_indexes = []
