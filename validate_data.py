@@ -36,6 +36,9 @@ all_adtl_zips = list(itertools.chain.from_iterable(adtl_zip_data.values()))
 
 email_regex = '^(\w|\.|\_|\-)+[@](\w|\_|\-|\.)+[.]\w{2,3}$'
 
+# social security numbers should be unique
+unique_soc_secs = []
+
 def main(options):
     """
     Initialize dataframe, count missing values, determine correct values, bad values, and incorrect
@@ -102,19 +105,29 @@ def validate_social_security(user_data, a):
     and if so alerts the user, as well as determines if the formatting is wrong. If the formatting
     is wrong, the user is not alerted, it is just fixed in the dataframe.
     """
+    correct_soc_sec = True
     if not pd.isnull(user_data['social_security'][a]):
-        # bad value
+        # check for bad value
         if not ((user_data['social_security'][a].replace('-','')).isnumeric() and len(user_data['social_security'][a].replace('-','')) == 9):
             print('INVALID SOCIAL SECURITY NUMBER. value: {} on index: {}'.format(user_data['social_security'][a], a))
-            return False
+            correct_soc_sec = False
             
-        # incorrect formatting
+        just_numbers = [s for s in user_data['social_security'][a] if s.isnumeric()]
+        just_numbers = ''.join(just_numbers)
+
+        if just_numbers in unique_soc_secs:
+            print('DUPLICATE SOCIAL SECURITY NUMBER. value: {} on index: {}'.format(user_data['social_security'][a], a))
+            correct_soc_sec = False
+        else:
+            unique_soc_secs.append(just_numbers)
+
+        # check for incorrect formatting
         i = user_data['social_security'][a]
         if ((i.isnumeric() and len(i) == 9)):
             user_data.at[a, 'social_security'] = i[0:3] + '-' + i[3:5] + '-' + i[5:]
-            return False
+            correct_soc_sec = False
 
-    return True 
+    return correct_soc_sec 
 
 def validate_state(user_data, a):
     """
@@ -124,12 +137,12 @@ def validate_state(user_data, a):
     """
     correct_state = True
     if not pd.isnull(user_data['state'][a]):
-        # bad value
+        # check for bad value
         if (not user_data['state'][a] in state_codes.keys()) and (not user_data['state'][a] in state_codes.values()):
             print('INVALID STATE. value: {} on index: {}'.format(user_data['state'][a], a))
             correct_state = False
 
-        # incorrect formatting
+        # check for incorrect formatting
         i = user_data['state'][a]
         if (i not in state_codes.values()):
             # Check if both letters of the state code are not upper case
@@ -148,7 +161,7 @@ def validate_zip(user_data, a):
     and if so alerts the user. No formatting is currently being checked on the zip code.
     """
     if not pd.isnull(user_data['zip'][a]):
-        # bad value
+        # check for bad value
         if not (user_data['zip'][a] in all_adtl_zips):
             print('INVALID ZIP CODE. value: {} on index: {}'.format(user_data['zip'][a],a))
             return False
@@ -163,7 +176,7 @@ def validate_phone(user_data, a):
     # Bad values here are complicated. If the phone number has 11 digits, and the first is 1,
     # is that a valid phone number with a USA prefix or an invalid phone number?
 
-    # incorrect formatting
+    # check for incorrect formatting
     correct_phone = True
     if not pd.isnull(user_data['phone1'][a]):
         i = user_data['phone1'][a]
@@ -212,7 +225,7 @@ def validate_email(user_data, a):
     and if so alerts the user. No formatting is currently being checked on the email address.
     """
     if not pd.isnull(user_data['email'][a]):
-        # bad value
+        # check for bad value
         if(not re.search(email_regex, user_data['email'][a])):
             print('INVALID EMAIL ADDRESS. email: {}, index: {}'.format(user_data['email'][a], a))
             return False
