@@ -37,6 +37,7 @@ def main(options):
             'email':            str
         }
         user_data = pd.read_csv(options.input_file, dtype=csv_dtype)
+        print('Reading file: {}'.format(os.path.abspath(options.input_file)))
     except:
         print('Error reading csv file. Check path to make sure it is a valid csv file')
         exit(1)
@@ -73,6 +74,7 @@ def main(options):
     print('Correct phone numbers: {}'.format(num_correct_phones - num_missing_phones))
     print('Correct email addresses: {}'.format(num_correct_emails - num_missing_emails))
 
+    print('Writing to file: {}'.format(os.path.abspath(os.path.join(options.output_path, 'new_data_quality_case_study.csv'))))
     user_data.to_csv(os.path.join(options.output_path, 'new_data_quality_case_study.csv'), index=False)
 
 def validate_social_security(user_data, a):
