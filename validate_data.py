@@ -10,10 +10,15 @@ Assumptions being made about the data:
 All USA data
 No need to prompt the user to fix "bad" values
 A correct value is a value that is not bad and not incorrect formatting.
-A phone number is formatted as (123) 456-7890 (also capability for 123-456-7890)
-Currently not sure what would constitute an incorrectly formatted email...
-"""
+The zip codes column are encoded as integers (so there could be a leading 0 that is not shown).
+A missing value is one that is null or equal to na or n/a (or some form of upper-case, lower-case mixture).
 
+A correct social security number is formatted as 123-45-6789.
+A correct state is formatted as two upper case letters, which correspond to an existing state code.
+A correct zip code is a 5 digit integer that is an existing zip code...an incorrectly formatted zip is a 4 digit zip code that begins with 0 but was left off.
+A phone number is formatted as (123) 456-7890 (also capability for 123-456-7890)
+A correct email address is ${string}@${string}.${string}
+"""
 
 import itertools
 import json
@@ -59,29 +64,32 @@ def main(options):
         print('Error reading csv file. Check path to make sure it is a valid csv file')
         exit(1)
 
+    # determine how many missing values are the dataframe
     num_missing_soc_secs, num_missing_states, num_missing_zips, num_missing_phones, num_missing_emails = \
         find_missing_values(user_data)
+
+    print( \
+        'Determining bad values and incorrect formatting. Bad values will be alerted, while '
+        'incorrect formatting will not. Incorrect formatting will be automatically fixed.\n' \
+        )
 
     num_correct_soc_secs = 0
     num_correct_states = 0
     num_correct_zips = 0
     num_correct_phones = 0
     num_correct_emails = 0
-    
-    print( \
-        'Determining bad values and incorrect formatting. Bad values will be alerted, while '
-        'incorrect formatting will not. Incorrect formatting will be automatically fixed.\n' \
-        )
 
     # cycle through all records to find bad, incorrect formatted (and fix), and correct values
     for a in range(user_data.shape[0]):
 
+        # determine if each column of the row are bad or incorrectly formatted
         correct_soc_sec = validate_social_security(user_data, a)      
         correct_state = validate_state(user_data, a)
         correct_zip = validate_zip(user_data, a)
         correct_phone = validate_phone(user_data, a)
         correct_email = validate_email(user_data, a)
 
+        # determine if the state matches the zip code
         state_and_zip_validation(user_data, a)
 
         if correct_soc_sec: num_correct_soc_secs += 1
@@ -90,6 +98,7 @@ def main(options):
         if correct_phone: num_correct_phones += 1
         if correct_email: num_correct_emails += 1
 
+    # Report findings to user
     print('\nCorrect social security numbers: {}'.format(num_correct_soc_secs - num_missing_soc_secs))
     print('Correct states: {}'.format(num_correct_states - num_missing_states))
     print('Correct zip codes: {}'.format(num_correct_zips - num_missing_zips))
@@ -104,9 +113,13 @@ def validate_social_security(user_data, a):
     This function checks an individual social security number, determines if it's a bad value,
     and if so alerts the user, as well as determines if the formatting is wrong. If the formatting
     is wrong, the user is not alerted, it is just fixed in the dataframe.
+    123-45-6789
     """
     correct_soc_sec = True
-    if not pd.isnull(user_data['social_security'][a]):
+    if not (pd.isnull(user_data['social_security'][a]) or \
+        user_data['social_security'][a].lower() == 'na' or \
+        user_data['social_security'][a].lower() == 'n/a'
+        ):
         # check for bad value
         if not ((user_data['social_security'][a].replace('-','')).isnumeric() and len(user_data['social_security'][a].replace('-','')) == 9):
             print('INVALID SOCIAL SECURITY NUMBER. value: {} on index: {}'.format(user_data['social_security'][a], a))
@@ -136,7 +149,10 @@ def validate_state(user_data, a):
     is wrong, the user is not alerted, it is just fixed in the dataframe.
     """
     correct_state = True
-    if not pd.isnull(user_data['state'][a]):
+    if not (pd.isnull(user_data['state'][a]) or \
+        user_data['state'][a].lower() == 'na' or \
+        user_data['state'][a].lower() == 'n/a'
+        ):
         # check for bad value
         if (not user_data['state'][a] in state_codes.keys()) and (not user_data['state'][a] in state_codes.values()):
             print('INVALID STATE. value: {} on index: {}'.format(user_data['state'][a], a))
@@ -160,13 +176,26 @@ def validate_zip(user_data, a):
     This function checks an individual zip code, determines if it's a bad value,
     and if so alerts the user. No formatting is currently being checked on the zip code.
     """
-    if not pd.isnull(user_data['zip'][a]):
+    correct_zip = True
+    if not (pd.isnull(user_data['zip'][a]) or \
+        user_data['zip'][a].lower() == 'na' or \
+        user_data['zip'][a].lower() == 'n/a'
+        ):
+        # if the zip code is length 4, check if appending a zero to the front makes it valid
+        if len(user_data['zip'][a]) == 4:
+            i = '0' + user_data['zip'][a]
+        else:
+            i = user_data['zip'][a]
+        # check for incorrect formatting
+        if (i in all_adtl_zips) and (not user_data['zip'][a] in all_adtl_zips):
+            user_data.at[a, 'zip'] = i
+            correct_zip = False
         # check for bad value
-        if not (user_data['zip'][a] in all_adtl_zips):
+        elif not i in all_adtl_zips:
             print('INVALID ZIP CODE. value: {} on index: {}'.format(user_data['zip'][a],a))
-            return False
+            correct_zip = False
 
-    return True
+    return correct_zip
 
 def validate_phone(user_data, a):
     """
@@ -178,7 +207,10 @@ def validate_phone(user_data, a):
 
     # check for incorrect formatting
     correct_phone = True
-    if not pd.isnull(user_data['phone1'][a]):
+    if not (pd.isnull(user_data['phone1'][a]) or \
+        user_data['phone1'][a].lower() == 'na' or \
+        user_data['phone1'][a].lower() == 'n/a'
+        ):
         i = user_data['phone1'][a]
         if i[:2] == '+1': # it's already assumed we're in USA
             correct_phone = False
@@ -224,7 +256,10 @@ def validate_email(user_data, a):
     This function checks an individual email address, determines if it's a bad value,
     and if so alerts the user. No formatting is currently being checked on the email address.
     """
-    if not pd.isnull(user_data['email'][a]):
+    if not (pd.isnull(user_data['email'][a]) or \
+        user_data['email'][a].lower() == 'na' or \
+        user_data['email'][a].lower() == 'n/a'
+        ):
         # check for bad value
         if(not re.search(email_regex, user_data['email'][a])):
             print('INVALID EMAIL ADDRESS. email: {}, index: {}'.format(user_data['email'][a], a))
@@ -263,11 +298,26 @@ def find_missing_values(user_data):
     emails_missing_indexes = []
 
     for a in range(user_data.shape[0]):
-        if pd.isnull(user_data['social_security'][a]): soc_secs_missing_indexes.append(a)
-        if pd.isnull(user_data['state'][a]): states_missing_indexes.append(a)
-        if pd.isnull(user_data['zip'][a]): zips_missing_indexes.append(a)
-        if pd.isnull(user_data['phone1'][a]): phones_missing_indexes.append(a)
-        if pd.isnull(user_data['email'][a]): emails_missing_indexes.append(a)
+        if pd.isnull(user_data['social_security'][a]) or \
+            (user_data['social_security'][a].lower() == 'na') or \
+            (user_data['social_security'][a].lower() == 'n/a'):
+            soc_secs_missing_indexes.append(a)
+        if pd.isnull(user_data['state'][a]) or \
+            (user_data['state'][a].lower() == 'na') or \
+            (user_data['state'][a].lower() == 'n/a'):
+            states_missing_indexes.append(a)
+        if pd.isnull(user_data['zip'][a]) or \
+            (user_data['zip'][a].lower() == 'na') or \
+            (user_data['zip'][a].lower() == 'n/a'):
+            zips_missing_indexes.append(a)
+        if pd.isnull(user_data['phone1'][a]) or \
+            (user_data['phone1'][a].lower() == 'na') or \
+            (user_data['phone1'][a].lower() == 'n/a'):
+            phones_missing_indexes.append(a)
+        if pd.isnull(user_data['email'][a]) or \
+            (user_data['email'][a].lower() == 'na') or \
+            (user_data['email'][a].lower() == 'n/a'): 
+            emails_missing_indexes.append(a)
     
     num_missing_soc_secs = len(soc_secs_missing_indexes)
     num_missing_states = len(states_missing_indexes)
@@ -296,6 +346,8 @@ if __name__ == '__main__':
 
     parser.add_option('-i', '--input-file', dest='input_file', action='store', default='data_quality_case_study.csv', help='Input path')
     parser.add_option('-o', '--output-path', dest='output_path', action='store', default=os.getcwd(), help='Output path for cleaned csv file')
+
+    # -p option for phone formatting 123-456-7890, default is (123) 456-7890
 
     (options, args) = parser.parse_args()
 
