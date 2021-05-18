@@ -27,6 +27,7 @@ import os
 import pandas as pd
 import re
 import sys
+from IPython import embed as shell
 
 # load dictionary of all valid state names and their two letter code
 with open('states.json', 'r') as state_file:
@@ -165,8 +166,8 @@ def validate_state(user_data, a):
             if i.upper() in state_codes.values():
                 user_data.at[a, 'state'] = state_codes[i.upper()]
             # check if i is a valid state
-            elif i.lower().capitalize() in state_codes.keys(): # make sure to format the state correctly when searching
-                user_data.at[a, 'state'] = state_codes[i.lower().capitalize()]
+            elif i.lower().title() in state_codes.keys(): # make sure to format the state correctly when searching
+                user_data.at[a, 'state'] = state_codes[i.lower().title()]
             correct_state = False
 
     return correct_state
@@ -202,20 +203,32 @@ def validate_phone(user_data, a):
     This function checks an individual phone number, determines if the formatting is wrong. If the formatting
     is wrong, the user is not alerted, it is just fixed in the dataframe.
     """
-    # Bad values here are complicated. If the phone number has 11 digits, and the first is 1,
-    # is that a valid phone number with a USA prefix or an invalid phone number?
-
-    # check for incorrect formatting
     correct_phone = True
+
     if not (pd.isnull(user_data['phone1'][a]) or \
         user_data['phone1'][a].lower() == 'na' or \
         user_data['phone1'][a].lower() == 'n/a'
         ):
-        i = user_data['phone1'][a]
-        if i[:2] == '+1': # it's already assumed we're in USA
+        # Bad values here are a little complicated. If the phone number has 11 digits, and the first is 1,
+        # we won't consider it bad, but everything outside of that is bad.
+        temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
+        temp_phone = ''.join(temp_phone) # we just want the digits
+        if temp_phone[0] == '1' and len(temp_phone) == 11: # it's already assumed we're in USA
+            temp_phone = temp_phone[1:]
+
+        # only '+', ' ', '-', '(', ')' characters allowed in the phone number
+        valid_chars = True
+        tmp_valid = user_data['phone1'][a].replace(' ', '').replace('+', '').replace('-', '').replace(')', '').replace('(', '')
+        for t in tmp_valid:
+            if not t.isnumeric():
+                valid_chars = False
+
+        if not ((len(temp_phone) == 10) and (valid_chars)):
+            print('INVALID PHONE NUMBER. value: {} on index: {}'.format(user_data['phone1'][a],a))
             correct_phone = False
-            i = i[2:].strip()
-        # phone format (123) 456-7890
+
+        # check for incorrect formatting on (123) 456-7890
+        i = user_data['phone1'][a]
         if not ( \
             (len(i) == 14) and \
             i[0] == '(' and \
@@ -227,13 +240,13 @@ def validate_phone(user_data, a):
             i[10:].isnumeric() \
             ):
             correct_phone = False
-        temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
-        temp_phone = ''.join(temp_phone)
+
         if len(temp_phone) == 10:
             i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
             user_data.at[a, 'phone1'] = i
 
-        # phone format 123-456-7890
+        # check for incorrect formatting on 123-456-7890
+        i = user_data['phone1'][a]
         #if not ( \
         #    (len(i) == 12) and \
         #    i[0:3].isnumeric() and \
@@ -243,11 +256,11 @@ def validate_phone(user_data, a):
         #    i[8:].isnumeric()
         #    ):
         #    correct_phone = False
-        #temp_phone = [p for p in user_data['phone1'][a] if p.isnumeric()]
-        #temp_phone = ''.join(temp_phone)
-        #if len(temp_phone) == 10:
-        #    i = '{}-{}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
-        #    user_data.at[a, 'phone1'] = i
+
+        if len(temp_phone) == 10:
+            i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
+            user_data.at[a, 'phone1'] = i
+
 
     return correct_phone
 
