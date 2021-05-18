@@ -16,7 +16,7 @@ A missing value is one that is null or equal to na or n/a (or some form of upper
 A correct social security number is formatted as 123-45-6789.
 A correct state is formatted as two upper case letters, which correspond to an existing state code.
 A correct zip code is a 5 digit integer that is an existing zip code...an incorrectly formatted zip is a 4 digit zip code that begins with 0 but was left off.
-A phone number is formatted as (123) 456-7890 (also capability for 123-456-7890)
+A phone number is formatted as 123-456-7890 (also capability for (123) 456-7890)
 A correct email address is ${string}@${string}.${string}
 """
 
@@ -228,37 +228,38 @@ def validate_phone(user_data, a):
             correct_phone = False
 
         # check for incorrect formatting on (123) 456-7890
+        #i = user_data['phone1'][a]
+        #if not ( \
+        #    (len(i) == 14) and \
+        #    i[0] == '(' and \
+        #    i[1:4].isnumeric() and \
+        #    i[4] == ')' and \
+        #    i[5] == ' ' and \
+        #    i[6:9].isnumeric() and \
+        #    i[9] == '-' and \
+        #    i[10:].isnumeric() \
+        #    ):
+        #    correct_phone = False
+
+        #if len(temp_phone) == 10:
+        #    i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
+        #    user_data.at[a, 'phone1'] = i
+
+        # check for incorrect formatting on 123-456-7890
+        # From the North American Numbering Plan
         i = user_data['phone1'][a]
         if not ( \
-            (len(i) == 14) and \
-            i[0] == '(' and \
-            i[1:4].isnumeric() and \
-            i[4] == ')' and \
-            i[5] == ' ' and \
-            i[6:9].isnumeric() and \
-            i[9] == '-' and \
-            i[10:].isnumeric() \
+            (len(i) == 12) and \
+            i[0:3].isnumeric() and \
+            i[3] == '-' and \
+            i[4:7].isnumeric() and \
+            i[7] == '-' and \
+            i[8:].isnumeric()
             ):
             correct_phone = False
 
         if len(temp_phone) == 10:
-            i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
-            user_data.at[a, 'phone1'] = i
-
-        # check for incorrect formatting on 123-456-7890
-        i = user_data['phone1'][a]
-        #if not ( \
-        #    (len(i) == 12) and \
-        #    i[0:3].isnumeric() and \
-        #    i[3] == '-' and \
-        #    i[4:7].isnumeric() and \
-        #    i[7] == '-' and \
-        #    i[8:].isnumeric()
-        #    ):
-        #    correct_phone = False
-
-        if len(temp_phone) == 10:
-            i = '({}) {}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
+            i = '{}-{}-{}'.format(temp_phone[0:3], temp_phone[3:6], temp_phone[6:])
             user_data.at[a, 'phone1'] = i
 
 
